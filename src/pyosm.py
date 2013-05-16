@@ -388,6 +388,10 @@ class OSCXMLFileParser(xml.sax.ContentHandler):
             elif self.curr_relation:
                 self.curr_relation.tags[attrs['k']] = attrs['v']
 
+        elif name == "nd":
+            # Ignore this
+            True
+
         elif name == "osmChange":
             self.curr_osmattrs = attrs
 
