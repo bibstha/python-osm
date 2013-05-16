@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#! env python
 #
 # Original version by Rory McCann (http://blog.technomancy.org/)
 # Modifications by Christoph Lupprich (http://www.stopbeingcarbon.com)
@@ -146,9 +146,19 @@ class OSCXMLFile(object):
         self.create_nodes = {}
         self.modify_nodes = {}
         self.delete_nodes = {}
+        self.create_ways = {}
+        self.modify_ways = {}
+        self.delete_ways = {}
+        self.create_relations = {}
+        self.modify_relations = {}
+        self.delete_relations = {}
         self.osmattrs = {}
-        self.options = {'load_nodes': True,
-                        'filterfunc': False}
+        self.options = {
+            'load_nodes': True,
+            'load_ways': True,
+            'load_relations': True,
+            'filterfunc': False
+        }
         self.options.update(options)
         if filename:
             self.__parse()
@@ -172,6 +182,12 @@ class OSCXMLFile(object):
         log.info("nodes created : %i", len(self.create_nodes))
         log.info("nodes modified: %i", len(self.modify_nodes))
         log.info("nodes deleted : %i", len(self.delete_nodes))
+        log.info("ways created : %i", len(self.create_ways))
+        log.info("ways modified: %i", len(self.modify_ways))
+        log.info("ways deleted : %i", len(self.delete_ways))
+        log.info("relations created : %i", len(self.create_relations))
+        log.info("relations modified: %i", len(self.modify_relations))
+        log.info("relations deleted : %i", len(self.delete_relations))
 
 class OSMXMLFile(object):
     def __init__(self, filename=None, content=None, options={}):
@@ -335,9 +351,16 @@ class OSCXMLFileParser(xml.sax.ContentHandler):
     def __init__(self, containing_obj):
         self.containing_obj = containing_obj
         self.load_nodes = containing_obj.options['load_nodes']
+        self.load_ways = containing_obj.options['load_ways']
+        self.load_relations = containing_obj.options['load_relations']
 
         self.curr_node = None
+        self.curr_way = None
+        self.curr_relation = None
         self.curr_osmattrs = None
+        self.mode_modify = False
+        self.mode_delete = False
+        self.mode_create = False
 
     def startElement(self, name, attrs):
         if name == 'modify':
@@ -350,10 +373,20 @@ class OSCXMLFileParser(xml.sax.ContentHandler):
         elif name == 'node':
             if self.load_nodes:
                 self.curr_node = Node(attr=attrs)
+        elif name == 'way':
+            if self.load_ways:
+                self.curr_way = Way(attr=attrs)
+        elif name == 'relation':
+            if self.load_relations:
+                self.curr_relation = Relation(attr=attrs)
 
         elif name == 'tag':
             if self.curr_node:
                 self.curr_node.tags[attrs['k']] = attrs['v']
+            elif self.curr_way:
+                self.curr_way.tags[attrs['k']] = attrs['v']
+            elif self.curr_relation:
+                self.curr_relation.tags[attrs['k']] = attrs['v']
 
         elif name == "osmChange":
             self.curr_osmattrs = attrs
@@ -380,6 +413,30 @@ class OSCXMLFileParser(xml.sax.ContentHandler):
                 else:
                     log.warn("Finished a node without being in a valid mode?: %s", self.curr_node)
             self.curr_node = None
+
+        elif name == "way":
+            if self.load_ways:
+                if self.mode_modify:
+                    self.containing_obj.modify_ways[self.curr_way.id] = self.curr_way
+                elif self.mode_delete:
+                    self.containing_obj.delete_ways[self.curr_way.id] = self.curr_way
+                elif self.mode_create:
+                    self.containing_obj.create_ways[self.curr_way.id] = self.curr_way
+                else:
+                    log.warn("Finished a way without being in a valid mode?: %s", self.curr_way)
+            self.curr_way = None
+
+        elif name == "relation":
+            if self.load_relations:
+                if self.mode_modify:
+                    self.containing_obj.modify_relations[self.curr_relation.id] = self.curr_relation
+                elif self.mode_delete:
+                    self.containing_obj.delete_relations[self.curr_relation.id] = self.curr_relation
+                elif self.mode_create:
+                    self.containing_obj.create_relations[self.curr_relation.id] = self.curr_relation
+                else:
+                    log.warn("Finished a relation without being in a valid mode?: %s", self.curr_relation)
+            self.curr_relation = None
 
         elif name == "osmChange":
             self.containing_obj.osmattrs = self.curr_osmattrs
