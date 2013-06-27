@@ -156,6 +156,7 @@ class OSCXMLFile(object):
         self.options = {
             'load_nodes': True,
             'load_ways': True,
+            'load_way_nodes': True,
             'load_relations': True,
             'filterfunc': False
         }
@@ -352,6 +353,7 @@ class OSCXMLFileParser(xml.sax.ContentHandler):
         self.containing_obj = containing_obj
         self.load_nodes = containing_obj.options['load_nodes']
         self.load_ways = containing_obj.options['load_ways']
+        self.load_way_nodes = containing_obj.options['load_way_nodes']
         self.load_relations = containing_obj.options['load_relations']
 
         self.curr_node = None
@@ -389,8 +391,10 @@ class OSCXMLFileParser(xml.sax.ContentHandler):
                 self.curr_relation.tags[attrs['k']] = attrs['v']
 
         elif name == "nd":
-            # Ignore this
-            True
+            if self.load_way_nodes:
+                assert self.curr_node is None, "curr_node (%r) is non-none" % (self.curr_node)
+                assert self.curr_way is not None, "curr_way is None"
+                self.curr_way.nodes.append(ObjectPlaceHolder(id=attrs['ref']))
 
         elif name == "osmChange":
             self.curr_osmattrs = attrs
@@ -558,3 +562,5 @@ if __name__ == '__main__':
             osc.statistic()
         else:
             log.warn("Unrecognised file extension (.osm or .osc): %s", filename)
+
+

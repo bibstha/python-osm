@@ -1,4 +1,4 @@
-#! env python
+#! /usr/bin/python2
 from pyosm import *
 from optparse import OptionParser
 import logging
@@ -19,6 +19,12 @@ if __name__ == '__main__':
 		ext = filename[-3:]
 		if ext == 'osc':
 			osc = OSCXMLFile(filename)
-			log.debug(dir(osc))
+			# log.debug(osc)
+			log.debug("**********" + str(len(osc.create_nodes)) + "**********", osc.create_nodes)
+			log.debug("**********" + str(len(osc.modify_nodes)) + "**********", osc.modify_nodes)
+			log.debug("**********" + str(len(osc.delete_nodes)) + "**********", osc.delete_nodes)
+			log.debug("**********" + str(len(osc.create_ways)) + "**********", osc.create_ways)
+			log.debug("**********" + str(len(osc.modify_ways)) + "**********", osc.modify_ways)
+			log.debug("**********" + str(len(osc.delete_ways)) + "**********", osc.delete_ways)
 		else:
 			log.warn("Unrecognised file extension (.osm or .osc): %s", filename)
